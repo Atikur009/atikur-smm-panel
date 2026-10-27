@@ -106,7 +106,9 @@ def init_db():
             password_hash TEXT NOT NULL,
             balance REAL NOT NULL DEFAULT 0,
             is_admin INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            email TEXT NOT NULL DEFAULT '',
+            phone TEXT NOT NULL DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS services (
             id {ID_DEF},
@@ -149,6 +151,7 @@ def init_db():
             subject TEXT NOT NULL,
             message TEXT NOT NULL,
             order_id INTEGER NOT NULL DEFAULT 0,
+            category TEXT NOT NULL DEFAULT 'Other',
             status TEXT NOT NULL DEFAULT 'open',
             created_at TEXT NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id)
@@ -172,12 +175,24 @@ def init_db():
     if USE_POSTGRES:
         db.execute("ALTER TABLE services ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''")
         db.execute("ALTER TABLE services ADD COLUMN IF NOT EXISTS markup_percent REAL")
+        db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''")
+        db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
+        db.execute("ALTER TABLE tickets ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'Other'")
     else:
         for coldef in ("description TEXT NOT NULL DEFAULT ''", "markup_percent REAL"):
             try:
                 db.execute(f"ALTER TABLE services ADD COLUMN {coldef}")
             except sqlite3.OperationalError:
                 pass
+        for coldef in ("email TEXT NOT NULL DEFAULT ''", "phone TEXT NOT NULL DEFAULT ''"):
+            try:
+                db.execute(f"ALTER TABLE users ADD COLUMN {coldef}")
+            except sqlite3.OperationalError:
+                pass
+        try:
+            db.execute("ALTER TABLE tickets ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'")
+        except sqlite3.OperationalError:
+            pass
     # Seed: insert any catalog service missing by name, and backfill empty
     # descriptions. Matching by name keeps this idempotent on repeat runs.
     for name, platform, price, mn, mx, psid, desc in SEED_SERVICES:
@@ -303,14 +318,20 @@ def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        email = request.form.get("email", "").strip()
+        phone = request.form.get("phone", "").strip()
         if len(username) < 3 or len(password) < 4:
             flash("Username min 3 chars, password min 4 chars.", "error")
+        elif "@" not in email or "." not in email.split("@")[-1]:
+            flash("Please enter a valid email address.", "error")
+        elif len(phone) < 6:
+            flash("Please enter a valid phone number.", "error")
         else:
             db = get_db()
             try:
                 db.execute(
-                    "INSERT INTO users (username, password_hash, balance, created_at) VALUES (?,?,0,?)",
-                    (username, generate_password_hash(password), datetime.now().isoformat()),
+                    "INSERT INTO users (username, password_hash, balance, created_at, email, phone) VALUES (?,?,0,?,?,?)",
+                    (username, generate_password_hash(password), datetime.now().isoformat(), email, phone),
                 )
                 db.commit()
                 flash("Account created. Please log in.", "ok")
@@ -342,12 +363,13 @@ def dashboard():
     db = get_db()
     u = current_user()
     services = db.execute("SELECT * FROM services WHERE active=1 ORDER BY id").fetchall()
-    orders = db.execute(
-        """SELECT o.*, s.name AS service_name FROM orders o
-           JOIN services s ON s.id=o.service_id WHERE o.user_id=? ORDER BY o.id DESC LIMIT 50""",
-        (u["id"],)).fetchall()
-    return render_template("dashboard.html", user=u, services=services, orders=orders,
-                           provider_ok=provider_configured())
+    platforms = sorted({s["platform"] for s in services})
+    stats = {
+        "spent": db.execute("SELECT COALESCE(SUM(charge),0) s FROM orders WHERE user_id=?", (u["id"],)).fetchone()["s"],
+        "orders": db.execute("SELECT COUNT(*) c FROM orders WHERE user_id=?", (u["id"],)).fetchone()["c"],
+    }
+    return render_template("dashboard.html", user=u, services=services, stats=stats,
+                           platforms=platforms, provider_ok=provider_configured())
 
 @app.route("/order", methods=["POST"])
 @login_required
@@ -399,6 +421,126 @@ def place_order():
           ("" if poid else " It will start after admin confirmation."), "ok")
     return redirect(url_for("dashboard"))
 
+@app.route("/services")
+@login_required
+def services_page():
+    db = get_db()
+    q = request.args.get("q", "").strip()
+    all_services = db.execute("SELECT * FROM services WHERE active=1 ORDER BY platform, id").fetchall()
+    if q:
+        ql = q.lower()
+        all_services = [s for s in all_services if ql in s["name"].lower() or ql in s["platform"].lower()]
+    grouped = {}
+    for s in all_services:
+        grouped.setdefault(s["platform"], []).append(s)
+    return render_template("services.html", user=current_user(), grouped=grouped, q=q)
+
+@app.route("/mass-order", methods=["GET", "POST"])
+@login_required
+def mass_order():
+    db = get_db()
+    u = current_user()
+    if request.method == "POST":
+        raw = request.form.get("orders", "")
+        lines = [ln.strip() for ln in raw.strip().splitlines() if ln.strip()]
+        parsed, errors, total = [], [], 0.0
+        for i, ln in enumerate(lines, 1):
+            parts = [p.strip() for p in ln.split("|")]
+            if len(parts) != 3:
+                errors.append(f"Line {i}: use service_id | link | quantity.")
+                continue
+            try:
+                sid, qty = int(parts[0]), int(parts[2])
+            except ValueError:
+                errors.append(f"Line {i}: service id and quantity must be numbers.")
+                continue
+            link = parts[1]
+            svc = db.execute("SELECT * FROM services WHERE id=? AND active=1", (sid,)).fetchone()
+            if not svc:
+                errors.append(f"Line {i}: unknown or inactive service id {sid}.")
+                continue
+            if not (link.startswith("http://") or link.startswith("https://")):
+                errors.append(f"Line {i}: link must start with http/https.")
+                continue
+            if not (svc["min_qty"] <= qty <= svc["max_qty"]):
+                errors.append(f"Line {i}: quantity must be {svc['min_qty']}–{svc['max_qty']} for {svc['name']}.")
+                continue
+            charge = round(qty * svc["price_per_1k"] / 1000, 2)
+            parsed.append((sid, link, qty, charge))
+            total += charge
+        if not lines:
+            errors.append("Paste at least one order line.")
+        if errors:
+            for e in errors:
+                flash(e, "error")
+        elif total > u["balance"]:
+            flash(f"Not enough balance. Total ৳{total:.2f}, you have ৳{u['balance']:.2f}.", "error")
+        else:
+            # Mass orders are created pending for manual handling, exactly
+            # like single orders without a connected provider. Nothing is
+            # sent to any provider here; validation above is all-or-nothing
+            # so a bad line never creates a partial batch.
+            db.execute("UPDATE users SET balance=balance-? WHERE id=?", (total, u["id"]))
+            now = datetime.now().isoformat()
+            for sid, link, qty, charge in parsed:
+                db.execute("INSERT INTO orders (user_id, service_id, link, quantity, charge, created_at) VALUES (?,?,?,?,?,?)",
+                           (u["id"], sid, link, qty, charge, now))
+            db.commit()
+            flash(f"{len(parsed)} orders placed! Total charge ৳{total:.2f}. They will start after admin confirmation.", "ok")
+            return redirect(url_for("orders_page"))
+    services = db.execute("SELECT * FROM services WHERE active=1 ORDER BY id").fetchall()
+    return render_template("mass_order.html", user=u, services=services)
+
+@app.route("/orders")
+@login_required
+def orders_page():
+    db = get_db()
+    u = current_user()
+    q = request.args.get("q", "").strip()
+    status = request.args.get("status", "all")
+    orders = db.execute(
+        """SELECT o.*, s.name AS service_name FROM orders o
+           JOIN services s ON s.id=o.service_id WHERE o.user_id=? ORDER BY o.id DESC""",
+        (u["id"],)).fetchall()
+    if status != "all":
+        # "In progress" and "Processing" are the same underlying status in
+        # this panel, so both pills filter to it.
+        want = "processing" if status in ("processing", "in_progress") else status
+        orders = [o for o in orders if o["status"] == want]
+    if q:
+        ql = q.lower()
+        orders = [o for o in orders if ql in o["link"].lower() or ql in o["service_name"].lower() or ql == str(o["id"])]
+    return render_template("orders.html", user=u, orders=orders, q=q, status=status)
+
+@app.route("/account")
+@login_required
+def account():
+    db = get_db()
+    u = current_user()
+    spent = db.execute("SELECT COALESCE(SUM(charge),0) s FROM orders WHERE user_id=?", (u["id"],)).fetchone()["s"]
+    count = db.execute("SELECT COUNT(*) c FROM orders WHERE user_id=?", (u["id"],)).fetchone()["c"]
+    return render_template("account.html", user=u, spent=spent, order_count=count)
+
+@app.route("/account/change-password", methods=["POST"])
+@login_required
+def change_password():
+    db = get_db()
+    u = current_user()
+    cur = request.form.get("current_password", "")
+    new = request.form.get("new_password", "")
+    conf = request.form.get("confirm_password", "")
+    if not check_password_hash(u["password_hash"], cur):
+        flash("Current password is incorrect.", "error")
+    elif len(new) < 4:
+        flash("New password must be at least 4 characters.", "error")
+    elif new != conf:
+        flash("New passwords do not match.", "error")
+    else:
+        db.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(new), u["id"]))
+        db.commit()
+        flash("Password changed successfully.", "ok")
+    return redirect(url_for("account"))
+
 @app.route("/funds", methods=["GET", "POST"])
 @login_required
 def funds():
@@ -435,6 +577,9 @@ def tickets():
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
         message = request.form.get("message", "").strip()
+        category = request.form.get("category", "Other").strip()
+        if category not in ("Refill", "Cancel", "Speed up", "Other"):
+            category = "Other"
         try:
             order_id = int(request.form.get("order_id", 0) or 0)
         except ValueError:
@@ -449,8 +594,8 @@ def tickets():
             flash("Subject and message are required.", "error")
         else:
             db.execute(
-                "INSERT INTO tickets (user_id, subject, message, order_id, created_at) VALUES (?,?,?,?,?)",
-                (u["id"], subject, message, order_id, datetime.now().isoformat()))
+                "INSERT INTO tickets (user_id, subject, message, order_id, category, created_at) VALUES (?,?,?,?,?,?)",
+                (u["id"], subject, message, order_id, category, datetime.now().isoformat()))
             db.commit()
             flash("Ticket submitted. Admin will reply here.", "ok")
             return redirect(url_for("tickets"))
@@ -515,12 +660,19 @@ def admin():
         """SELECT t.*, u.username FROM tickets t JOIN users u ON u.id=t.user_id
            ORDER BY t.id DESC LIMIT 50""").fetchall()
     all_services = db.execute("SELECT * FROM services ORDER BY id").fetchall()
+    all_users = db.execute("SELECT id, username, email, phone, balance, created_at FROM users ORDER BY id").fetchall()
     # Provider details saved in the DB (for later activation only). The API
     # key value is NEVER passed to the template — only whether one is saved.
     settings = {
         "provider_api_url": get_setting(db, "provider_api_url"),
         "default_markup_percent": get_setting(db, "default_markup_percent"),
         "provider_api_key_saved": bool(get_setting(db, "provider_api_key")),
+        "gateway_name": get_setting(db, "gateway_name"),
+        "gateway_merchant_id": get_setting(db, "gateway_merchant_id"),
+        "gateway_public_key": get_setting(db, "gateway_public_key"),
+        "gateway_private_key_saved": bool(get_setting(db, "gateway_private_key")),
+        "gateway_sandbox": get_setting(db, "gateway_sandbox"),
+        "gateway_enabled": get_setting(db, "gateway_enabled"),
     }
     stats = {
         "users": db.execute("SELECT COUNT(*) c FROM users").fetchone()["c"],
@@ -532,7 +684,7 @@ def admin():
     return render_template("admin.html", user=current_user(), pending_pay=pending_pay,
                            recent_pay=recent_pay, orders=orders, tickets=tickets, stats=stats,
                            provider_ok=provider_configured(), services=all_services,
-                           settings=settings)
+                           users=all_users, settings=settings)
 
 def _parse_service_form(form):
     """Validate admin service fields. Returns (values, error)."""
@@ -651,6 +803,28 @@ def admin_settings():
     db.commit()
     flash("Provider settings saved (for later activation — orders are still handled manually).", "ok")
     return redirect(url_for("admin"))
+
+@app.route("/admin/gateway_settings", methods=["POST"])
+@login_required
+@admin_required
+def gateway_settings():
+    # Payment-gateway option the owner fills himself later. Saving these
+    # does NOT change checkout: manual bKash funds stay the live method
+    # until a gateway is actually wired up and activated.
+    db = get_db()
+    set_setting(db, "gateway_name", request.form.get("gateway_name", "").strip())
+    set_setting(db, "gateway_merchant_id", request.form.get("gateway_merchant_id", "").strip())
+    set_setting(db, "gateway_public_key", request.form.get("gateway_public_key", "").strip())
+    # Blank private-key field = keep the saved key; never render or echo it.
+    new_priv = request.form.get("gateway_private_key", "")
+    if new_priv:
+        set_setting(db, "gateway_private_key", new_priv)
+    set_setting(db, "gateway_sandbox", "1" if request.form.get("gateway_sandbox") else "")
+    set_setting(db, "gateway_enabled", "1" if request.form.get("gateway_enabled") else "")
+    db.commit()
+    flash("Payment gateway option saved (manual funds still live until a gateway is activated).", "ok")
+    return redirect(url_for("admin"))
+
 
 @app.route("/admin/payment/<int:pid>/<action>")
 @login_required
