@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Support Tickets · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>Support Tickets</h2>
+<div class="formbox" style="max-width:580px">
+  <h3>Open a New Ticket</h3>
+  <form method="post">
+    <label>Subject<input name="subject" placeholder="e.g. My order is still pending" required></label>
+    <label>Related order # (optional)<input type="number" name="order_id" min="1" placeholder="Leave empty if not about an order"></label>
+    <label>Message<textarea name="message" rows="4" placeholder="Describe the issue..." required></textarea></label>
+    <button class="btn big" type="submit">Submit Ticket</button>
+  </form>
+</div>
+<h3>My Tickets</h3>
+<table>
+  <tr><th>#</th><th>Subject</th><th>Order</th><th>Status</th><th>Date</th><th></th></tr>
+  {% for t in tickets %}
+  <tr><td>{{ t['id'] }}</td><td>{{ t['subject'] }}</td><td>{{ t['order_id'] or '—' }}</td>
+      <td><span class="st {{ 'pending' if t['status']=='open' else 'completed' }}">{{ t['status'] }}</span></td>
+      <td>{{ t['created_at'][:16].replace('T',' ') }}</td>
+      <td><a class="btn small" href="{{ url_for('ticket_detail', tid=t['id']) }}">View</a></td></tr>
+  {% else %}<tr><td colspan="6">No tickets yet.</td></tr>{% endfor %}
+</table>
+{% endblock %}

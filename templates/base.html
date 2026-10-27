@@ -17,6 +17,7 @@
       {% if user['is_admin'] %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
       <a href="{{ url_for('dashboard') }}">Dashboard</a>
       <a href="{{ url_for('funds') }}">Add Funds</a>
+      <a href="{{ url_for('tickets') }}">Support</a>
       <a href="{{ url_for('logout') }}">Logout ({{ user['username'] }})</a>
     {% else %}
       <a href="{{ url_for('login') }}">Login</a>

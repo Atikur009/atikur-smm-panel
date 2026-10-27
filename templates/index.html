@@ -2,28 +2,73 @@
 {% block content %}
 <section class="hero">
   <h1>Boost Your Social Media 🚀</h1>
-  <p>Real followers & subscribers for Facebook, TikTok, Instagram and YouTube — at the lowest prices in BDT.</p>
+  <p>Followers, likes, views and subscribers for Facebook, TikTok, Instagram, YouTube and more — at low prices in BDT.</p>
   {% if not user %}<a class="btn big" href="{{ url_for('register') }}">Create Free Account</a>{% endif %}
-  <div class="trust"><span><b>৳</b> BDT Prices</span><span><b>bKash</b> Payment</span><span><b>Fast</b> Delivery</span><span><b>24/7</b> Order Tracking</span></div>
+  <div class="trust"><span><b>৳</b> BDT Prices</span><span><b>bKash</b> Payment</span><span><b>Fast</b> Ordering</span><span><b>24/7</b> Order Tracking</span></div>
 </section>
+
 <h2>Services & Prices</h2>
 <div class="cards">
 {% for s in services %}
   <div class="card">
     <div class="platform">{{ s['platform'] }}</div>
     <h3>{{ s['name'] }}</h3>
+    <p class="carddesc">{{ s['description'] }}</p>
     <div class="price">৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }} <span>/ 1000</span></div>
     <div class="minmax">Min {{ s['min_qty'] }} · Max {{ s['max_qty'] }}</div>
     <a class="btn" href="{{ url_for('register') if not user else url_for('dashboard') }}">Order Now</a>
   </div>
 {% endfor %}
 </div>
+<p class="hint">More services are added regularly — everything listed here is available to order right now.</p>
+
+<section class="statstrip">
+  <div class="stat"><span>Services Available</span><b>{{ stats['services'] }}</b></div>
+  <div class="stat"><span>Platforms</span><b>{{ stats['platforms'] }}</b></div>
+  <div class="stat"><span>Payment</span><b>bKash</b></div>
+  <div class="stat"><span>Support</span><b>Tickets</b></div>
+</section>
+
 <section class="how">
-  <h2>How it works</h2>
-  <ol>
-    <li><b>Sign up</b> for a free account.</li>
-    <li><b>Add funds</b> via bKash (send money, submit TrxID).</li>
-    <li><b>Place your order</b> — paste the link, choose quantity, done.</li>
+  <h2>How It Works</h2>
+  <ol class="steps">
+    <li><b>Create your free account</b> — sign up with a username and password, no card needed.</li>
+    <li><b>Add funds</b> — send money via bKash and submit the TrxID; balance is added after approval.</li>
+    <li><b>Choose a service</b> — browse the catalog by platform and check the price, min and max.</li>
+    <li><b>Place your order</b> — paste your public link, set the quantity and confirm.</li>
+    <li><b>Track your results</b> — watch the order status in your dashboard and open a ticket if anything looks off.</li>
   </ol>
+</section>
+
+<section class="platforms">
+  <h2>Platforms We Cover</h2>
+  <div class="platgrid">
+    {% for p in platforms %}
+    <div class="plat"><b>{{ p }}</b><span>{{ platform_services[p]|join(' · ') }}</span></div>
+    {% endfor %}
+  </div>
+  <p class="hint">Only services actually listed in the catalog above appear here — new platforms show up automatically as services are added.</p>
+</section>
+
+<section class="features">
+  <h2>Why Use This Panel?</h2>
+  <div class="cards">
+    <div class="card feature-card"><h3>💸 Low BDT Prices</h3><p class="carddesc">Pay in Taka via bKash. No subscriptions, no hidden fees — you only pay for what you order.</p></div>
+    <div class="card feature-card"><h3>⚡ Fast Ordering</h3><p class="carddesc">Place an order in under a minute: pick a service, paste your link, choose quantity, done.</p></div>
+    <div class="card feature-card"><h3>🔒 No Password Needed</h3><p class="carddesc">We never ask for your social media password. Every order needs only your public profile or post link.</p></div>
+    <div class="card feature-card"><h3>📦 Order Tracking</h3><p class="carddesc">Every order shows its live status in your dashboard, from pending to completed.</p></div>
+    <div class="card feature-card"><h3>🎧 Support Tickets</h3><p class="carddesc">Stuck on an order or a payment? Open a support ticket from your dashboard and get a reply.</p></div>
+    <div class="card feature-card"><h3>🛡️ Secure Payments</h3><p class="carddesc">Funds are added through bKash Send Money and confirmed by our team before they hit your balance.</p></div>
+  </div>
+</section>
+
+<section class="faq">
+  <h2>Frequently Asked Questions</h2>
+  <div class="faqitem"><h3>What is this panel?</h3><p>An online dashboard where you buy social media growth services — followers, likes, views, subscribers and more — and pay in BDT via bKash.</p></div>
+  <div class="faqitem"><h3>Do you need my social media password?</h3><p>Never. Every order only needs your public profile, post or video link. Anyone asking for your password is not us.</p></div>
+  <div class="faqitem"><h3>How do I add funds?</h3><p>Send money via bKash (Send Money, not Recharge) to the number on the Add Funds page, then submit the TrxID and your bKash number. Your balance is added after admin approval.</p></div>
+  <div class="faqitem"><h3>How long until my order starts?</h3><p>Orders wait for admin confirmation first, then are processed. You can follow the live status of every order in your dashboard.</p></div>
+  <div class="faqitem"><h3>What if something goes wrong with my order?</h3><p>Open a support ticket from your dashboard, mention the order number if you have one, and our team will reply there.</p></div>
+  <div class="faqitem"><h3>Is there a minimum order?</h3><p>Each service has its own minimum and maximum quantity, shown on its card and on the order form.</p></div>
 </section>
 {% endblock %}

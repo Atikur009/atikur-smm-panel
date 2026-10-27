@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ ticket['id'] }} · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>Ticket #{{ ticket['id'] }} — {{ ticket['subject'] }}</h2>
+<p class="hint">From {{ owner_name }} · {% if ticket['order_id'] %}Related order #{{ ticket['order_id'] }} · {% endif %}Status: <span class="st {{ 'pending' if ticket['status']=='open' else 'completed' }}">{{ ticket['status'] }}</span> · {{ ticket['created_at'][:16].replace('T',' ') }}</p>
+<div class="ticketmsg"><b>{{ owner_name }}:</b> {{ ticket['message'] }}</div>
+{% for r in replies %}
+<div class="ticketmsg"><b>{{ r['username'] }}:</b> {{ r['message'] }} <span class="hint">({{ r['created_at'][:16].replace('T',' ') }})</span></div>
+{% endfor %}
+<div class="formbox" style="max-width:580px">
+  <h3>Reply</h3>
+  <form method="post">
+    <label>Message<textarea name="message" rows="4" required></textarea></label>
+    <button class="btn big" type="submit">Send Reply</button>
+  </form>
+</div>
+{% if user['is_admin'] and ticket['status']=='open' %}
+<form method="post" action="{{ url_for('ticket_close', tid=ticket['id']) }}"><button class="btn small bad" type="submit">Close Ticket</button></form>
+{% endif %}
+<p><a href="{{ url_for('admin' if user['is_admin'] else 'tickets') }}">← Back</a></p>
+{% endblock %}

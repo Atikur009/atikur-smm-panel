@@ -13,7 +13,7 @@
   <label>Service
     <select name="service_id" id="svc" required>
       {% for s in services %}
-      <option value="{{ s['id'] }}" data-rate="{{ s['price_per_1k'] }}" data-min="{{ s['min_qty'] }}" data-max="{{ s['max_qty'] }}">
+      <option value="{{ s['id'] }}" data-rate="{{ s['price_per_1k'] }}" data-min="{{ s['min_qty'] }}" data-max="{{ s['max_qty'] }}" data-desc="{{ s['description'] }}">
         {{ s['platform'] }} — {{ s['name'] }} (৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }}/1K)
       </option>
       {% endfor %}
@@ -22,6 +22,7 @@
   <label>Link (profile / post / video URL)<input name="link" placeholder="https://..." required></label>
   <label>Quantity<input type="number" name="quantity" id="qty" min="1" required></label>
   <div class="hint" id="range"></div>
+  <div class="hint" id="svcdesc"></div>
   <div class="charge">Charge: <b id="charge">৳0</b></div>
   <button class="btn big" type="submit">Place Order</button>
 </form>
@@ -37,13 +38,14 @@
   {% else %}<tr><td colspan="6">No orders yet.</td></tr>{% endfor %}
 </table>
 <script>
-const svc = document.getElementById('svc'), qty = document.getElementById('qty'), ch = document.getElementById('charge'), rg = document.getElementById('range');
+const svc = document.getElementById('svc'), qty = document.getElementById('qty'), ch = document.getElementById('charge'), rg = document.getElementById('range'), ds = document.getElementById('svcdesc');
 function upd(){
   const opt = svc.selectedOptions[0];
   const rate = parseFloat(opt.dataset.rate), q = parseInt(qty.value||0);
   qty.min = opt.dataset.min; qty.max = opt.dataset.max;
   ch.textContent = '৳' + ((rate*q/1000).toFixed(2));
-  rg.textContent = 'Min ' + opt.dataset.min + ' · Max ' + opt.dataset.max;
+  rg.textContent = '৳' + rate + ' per 1000 · Min ' + opt.dataset.min + ' · Max ' + opt.dataset.max;
+  ds.textContent = opt.dataset.desc || '';
 }
 svc.onchange = upd; qty.oninput = upd; upd();
 </script>
