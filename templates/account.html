@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Account · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>My Account</h2>
+<div class="profilegrid">
+  <div class="stat"><span>Username</span><b>{{ user['username'] }}</b></div>
+  <div class="stat"><span>Email</span><b style="font-size:17px;word-break:break-all">{{ user['email'] or '—' }}</b></div>
+  <div class="stat"><span>Phone</span><b>{{ user['phone'] or '—' }}</b></div>
+  <div class="stat"><span>Balance</span><b>৳{{ '%.2f'|format(user['balance']) }}</b></div>
+  <div class="stat"><span>Total Spent</span><b>৳{{ '%.2f'|format(spent) }}</b></div>
+  <div class="stat"><span>Orders</span><b>{{ order_count }}</b></div>
+  <div class="stat"><span>User ID</span><b>{{ user['id'] }}</b></div>
+  <div class="stat"><span>Joined</span><b style="font-size:17px">{{ user['created_at'][:16].replace('T',' ') }}</b></div>
+</div>
+<div class="formbox" style="max-width:480px">
+  <h3 style="margin-top:0">Change Password</h3>
+  <form method="post" action="{{ url_for('change_password') }}">
+    <label>Current password<input type="password" name="current_password" required></label>
+    <label>New password<input type="password" name="new_password" required minlength="4"></label>
+    <label>Confirm new password<input type="password" name="confirm_password" required minlength="4"></label>
+    <button class="btn big" type="submit">Change Password</button>
+  </form>
+</div>
+{% endblock %}

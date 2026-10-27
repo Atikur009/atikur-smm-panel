@@ -2,7 +2,7 @@
 {% block title %}Ticket #{{ ticket['id'] }} · Atikur SMM Panel{% endblock %}
 {% block content %}
 <h2>Ticket #{{ ticket['id'] }} — {{ ticket['subject'] }}</h2>
-<p class="hint">From {{ owner_name }} · {% if ticket['order_id'] %}Related order #{{ ticket['order_id'] }} · {% endif %}Status: <span class="st {{ 'pending' if ticket['status']=='open' else 'completed' }}">{{ ticket['status'] }}</span> · {{ ticket['created_at'][:16].replace('T',' ') }}</p>
+<p class="hint">From {{ owner_name }} · Category: {{ ticket['category'] or 'Other' }} · {% if ticket['order_id'] %}Related order #{{ ticket['order_id'] }} · {% endif %}Status: <span class="st {{ 'pending' if ticket['status']=='open' else 'completed' }}">{{ ticket['status'] }}</span> · {{ ticket['created_at'][:16].replace('T',' ') }}</p>
 <div class="ticketmsg"><b>{{ owner_name }}:</b> {{ ticket['message'] }}</div>
 {% for r in replies %}
 <div class="ticketmsg"><b>{{ r['username'] }}:</b> {{ r['message'] }} <span class="hint">({{ r['created_at'][:16].replace('T',' ') }})</span></div>

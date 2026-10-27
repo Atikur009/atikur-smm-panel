@@ -9,28 +9,53 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+{% if user %}
+{# Logged-in app shell: dark sidebar + slim top bar. #}
+<div class="applayout">
+  <aside class="sidebar">
+    <a class="brand sidebrand" href="{{ url_for('index') }}">⚡ Atikur SMM Panel</a>
+    <div class="side-profile">
+      <div class="avatar">{{ user['username'][0]|upper }}</div>
+      <div class="side-who"><b>{{ user['username'] }}</b><span class="bal">৳{{ '%.2f'|format(user['balance']) }}</span></div>
+    </div>
+    <nav class="side-nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/dashboard' else '' }}">📝 New Order</a>
+      <a href="{{ url_for('mass_order') }}" class="{{ 'active' if request.path == '/mass-order' else '' }}">📋 Mass Order</a>
+      <a href="{{ url_for('orders_page') }}" class="{{ 'active' if request.path == '/orders' else '' }}">📦 Orders</a>
+      <a href="{{ url_for('services_page') }}" class="{{ 'active' if request.path == '/services' else '' }}">🗂️ Services</a>
+      <a href="{{ url_for('funds') }}" class="{{ 'active' if request.path == '/funds' else '' }}">💰 Add Funds</a>
+      <a href="{{ url_for('tickets') }}" class="{{ 'active' if request.path.startswith('/tickets') else '' }}">🎧 Support</a>
+      <a href="{{ url_for('account') }}" class="{{ 'active' if request.path.startswith('/account') else '' }}">👤 Account</a>
+      {% if user['is_admin'] %}<a href="{{ url_for('admin') }}" class="{{ 'active' if request.path == '/admin' else '' }}">🛠️ Admin</a>{% endif %}
+      <a href="{{ url_for('logout') }}">🚪 Logout</a>
+    </nav>
+  </aside>
+  <div class="appbody">
+    <div class="topbar"><span class="topbrand">⚡ Atikur SMM Panel</span><span class="bal">Balance: ৳{{ '%.2f'|format(user['balance']) }}</span></div>
+    <main class="appmain">
+{% else %}
+{# Logged-out shell: the original top nav, unchanged. #}
 <nav>
   <a class="brand" href="{{ url_for('index') }}">⚡ Atikur SMM Panel</a>
   <div class="nav-links">
-    {% if user %}
-      <span class="bal">৳{{ '%.2f'|format(user['balance']) }}</span>
-      {% if user['is_admin'] %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
-      <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('funds') }}">Add Funds</a>
-      <a href="{{ url_for('tickets') }}">Support</a>
-      <a href="{{ url_for('logout') }}">Logout ({{ user['username'] }})</a>
-    {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a class="btn" href="{{ url_for('register') }}">Sign Up</a>
-    {% endif %}
+    <a href="{{ url_for('login') }}">Login</a>
+    <a class="btn" href="{{ url_for('register') }}">Sign Up</a>
   </div>
 </nav>
 <main>
+{% endif %}
   {% with msgs = get_flashed_messages(with_categories=true) %}
     {% if msgs %}{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}{% endif %}
   {% endwith %}
   {% block content %}{% endblock %}
+{% if user %}
+    </main>
+    <footer>© 2026 Atikur SMM Panel · panel.atikur.cyou</footer>
+  </div>
+</div>
+{% else %}
 </main>
 <footer>© 2026 Atikur SMM Panel · panel.atikur.cyou</footer>
+{% endif %}
 </body>
 </html>

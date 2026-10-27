@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Services · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>Services</h2>
+<p class="hint">Every service actually available in the catalog, grouped by platform. Prices are per 1000 units in BDT.</p>
+<form class="searchbar" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search services or platforms...">
+  <button class="btn" type="submit">Search</button>
+  {% if q %}<a class="btn small" href="{{ url_for('services_page') }}">Clear</a>{% endif %}
+</form>
+{% for platform, items in grouped.items() %}
+<h3>{{ platform }}</h3>
+<table>
+  <tr><th>ID</th><th>Service</th><th>Rate / 1000</th><th>Min</th><th>Max</th><th>Description</th><th></th></tr>
+  {% for s in items %}
+  <tr><td>{{ s['id'] }}</td><td>{{ s['name'] }}</td>
+      <td>৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }}</td>
+      <td>{{ s['min_qty'] }}</td><td>{{ s['max_qty'] }}</td><td>{{ s['description'] }}</td>
+      <td><a class="btn small" href="{{ url_for('dashboard') }}">Order</a></td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No services match your search.</p>
+{% endfor %}
+{% endblock %}

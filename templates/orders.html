@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Orders · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>Orders</h2>
+<form class="searchbar" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search by order ID, link or service...">
+  <input type="hidden" name="status" value="{{ status }}">
+  <button class="btn" type="submit">Search</button>
+  {% if q %}<a class="btn small" href="{{ url_for('orders_page', status=status) }}">Clear</a>{% endif %}
+</form>
+<div class="filterrow">
+  {% for val, label in [('all','All'),('pending','Pending'),('in_progress','In progress'),('completed','Completed'),('partial','Partial'),('processing','Processing'),('canceled','Canceled')] %}
+  <a class="pill {{ 'active' if status == val else '' }}" href="{{ url_for('orders_page', status=val, q=q) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+<table>
+  <tr><th>ID</th><th>Date</th><th>Link</th><th>Charge</th><th>Quantity</th><th>Service</th><th>Status</th></tr>
+  {% for o in orders %}
+  <tr><td>{{ o['id'] }}</td><td>{{ o['created_at'][:16].replace('T',' ') }}</td>
+      <td><a class="linkcell" href="{{ o['link'] }}" target="_blank" rel="noopener" title="{{ o['link'] }}">{{ o['link'] }}</a></td>
+      <td>৳{{ '%.2f'|format(o['charge']) }}</td><td>{{ o['quantity'] }}</td><td>{{ o['service_name'] }}</td>
+      <td><span class="st {{ o['status'] }}">{{ o['status'] }}</span></td></tr>
+  {% else %}<tr><td colspan="7">No orders found.</td></tr>{% endfor %}
+</table>
+<p class="hint">Only real order data is shown here — there is no start-count or remains data, because orders are handled manually without a connected provider.</p>
+{% endblock %}

@@ -17,6 +17,16 @@
 <div class="flash error">Provider API not configured — orders will wait for manual handling.</div>
 {% endif %}
 
+<h3>Users</h3>
+<table>
+  <tr><th>#</th><th>Username</th><th>Email</th><th>Phone</th><th>Balance</th><th>Joined</th></tr>
+  {% for u in users %}
+  <tr><td>{{ u['id'] }}</td><td>{{ u['username'] }}</td><td>{{ u['email'] or '—' }}</td>
+      <td>{{ u['phone'] or '—' }}</td><td>৳{{ '%.2f'|format(u['balance']) }}</td>
+      <td>{{ u['created_at'][:16].replace('T',' ') }}</td></tr>
+  {% else %}<tr><td colspan="6">No users yet.</td></tr>{% endfor %}
+</table>
+
 <h3>Services</h3>
 <p class="hint">Add services manually here. Prices, limits, provider IDs and markup can be edited any time. Deactivating hides a service from the catalog — it is never deleted, so order history stays intact.</p>
 <table class="edittable">
@@ -66,6 +76,18 @@
   <button class="btn" type="submit">Save Provider Settings</button>
 </form>
 
+<h3>Payment Gateway — add it yourself later</h3>
+<p class="hint">Keep this option ready for when you get a gateway merchant account (e.g. Nagad). Saving these details does <b>not</b> change checkout yet — manual bKash funds stay live until a gateway is wired up and activated. The private key is never shown back on this page — leave the field blank to keep the saved key.</p>
+<form class="svcform" method="post" action="{{ url_for('gateway_settings') }}">
+  <label>Gateway name<input name="gateway_name" value="{{ settings['gateway_name'] }}" placeholder="e.g. Nagad"></label>
+  <label>Merchant ID<input name="gateway_merchant_id" value="{{ settings['gateway_merchant_id'] }}" placeholder="issued by the gateway"></label>
+  <label>Public key<input name="gateway_public_key" value="{{ settings['gateway_public_key'] }}" placeholder="gateway public key"></label>
+  <label>Private key<input type="password" name="gateway_private_key" placeholder="{{ 'saved — blank keeps it' if settings['gateway_private_key_saved'] else 'not set yet' }}"></label>
+  <label><input type="checkbox" name="gateway_sandbox" {{ 'checked' if settings['gateway_sandbox'] else '' }}> Sandbox / test mode</label>
+  <label><input type="checkbox" name="gateway_enabled" {{ 'checked' if settings['gateway_enabled'] else '' }}> Gateway enabled (wiring still required before checkout uses it)</label>
+  <button class="btn" type="submit">Save Gateway Option</button>
+</form>
+
 <h3>Pending bKash Payments</h3>
 <table>
   <tr><th>#</th><th>User</th><th>Amount</th><th>TrxID</th><th>Sender</th><th>Date</th><th>Action</th></tr>
@@ -79,9 +101,9 @@
 
 <h3>Support Tickets</h3>
 <table>
-  <tr><th>#</th><th>User</th><th>Subject</th><th>Order</th><th>Status</th><th>Date</th><th>Action</th></tr>
+  <tr><th>#</th><th>User</th><th>Category</th><th>Subject</th><th>Order</th><th>Status</th><th>Date</th><th>Action</th></tr>
   {% for t in tickets %}
-  <tr><td>{{ t['id'] }}</td><td>{{ t['username'] }}</td><td>{{ t['subject'] }}</td>
+  <tr><td>{{ t['id'] }}</td><td>{{ t['username'] }}</td><td>{{ t['category'] or 'Other' }}</td><td>{{ t['subject'] }}</td>
       <td>{{ t['order_id'] or '—' }}</td>
       <td><span class="st {{ 'pending' if t['status']=='open' else 'completed' }}">{{ t['status'] }}</span></td>
       <td>{{ t['created_at'][:16].replace('T',' ') }}</td>
@@ -89,7 +111,7 @@
         {% if t['status']=='open' %}
         <form method="post" action="{{ url_for('ticket_close', tid=t['id']) }}" style="display:inline"><button class="btn small bad" type="submit">Close</button></form>
         {% endif %}</td></tr>
-  {% else %}<tr><td colspan="7">No tickets yet.</td></tr>{% endfor %}
+  {% else %}<tr><td colspan="8">No tickets yet.</td></tr>{% endfor %}
 </table>
 
 <h3>All Orders</h3>

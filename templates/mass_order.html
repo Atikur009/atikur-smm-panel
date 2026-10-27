@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Mass Order · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>Mass Order</h2>
+<div class="how">
+  <h3 style="margin-top:0">How it works</h3>
+  <ol class="steps">
+    <li>Put <b>one order per line</b> in this exact format: <b>service_id | link | quantity</b></li>
+    <li>Every line is checked first — if any line is invalid, <b>nothing</b> is ordered.</li>
+    <li>The total charge is taken from your balance once, and all orders are created as <b>pending</b> for admin confirmation.</li>
+  </ol>
+  <p class="hint">Example: <code>1 | https://facebook.com/example | 1000</code></p>
+</div>
+<form class="orderform" style="max-width:none" method="post">
+  <label>Orders (one per line)<textarea name="orders" rows="8" placeholder="service_id | link | quantity&#10;1 | https://... | 1000" required></textarea></label>
+  <button class="btn big" type="submit">Place All Orders</button>
+</form>
+<h3>Service IDs</h3>
+<table>
+  <tr><th>ID</th><th>Platform</th><th>Service</th><th>Rate / 1000</th><th>Min</th><th>Max</th></tr>
+  {% for s in services %}
+  <tr><td>{{ s['id'] }}</td><td>{{ s['platform'] }}</td><td>{{ s['name'] }}</td>
+      <td>৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }}</td>
+      <td>{{ s['min_qty'] }}</td><td>{{ s['max_qty'] }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

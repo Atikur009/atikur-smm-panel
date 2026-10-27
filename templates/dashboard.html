@@ -1,52 +1,80 @@
 {% extends "base.html" %}
-{% block title %}Dashboard · Atikur SMM Panel{% endblock %}
+{% block title %}New Order · Atikur SMM Panel{% endblock %}
 {% block content %}
-<h2>Dashboard</h2>
+<h2>New Order</h2>
 <div class="statcards">
   <div class="stat"><span>Balance</span><b>৳{{ '%.2f'|format(user['balance']) }}</b></div>
-  <div class="stat"><span>Orders</span><b>{{ orders|length }}</b></div>
+  <div class="stat"><span>Total Spent</span><b>৳{{ '%.2f'|format(stats['spent']) }}</b></div>
+  <div class="stat"><span>Your Orders</span><b>{{ stats['orders'] }}</b></div>
 </div>
 {% if user['balance'] < 10 %}<p><a class="btn" href="{{ url_for('funds') }}">Add Funds via bKash</a></p>{% endif %}
 
-<h3>New Order</h3>
-<form class="orderform" method="post" action="{{ url_for('place_order') }}">
-  <label>Service
-    <select name="service_id" id="svc" required>
-      {% for s in services %}
-      <option value="{{ s['id'] }}" data-rate="{{ s['price_per_1k'] }}" data-min="{{ s['min_qty'] }}" data-max="{{ s['max_qty'] }}" data-desc="{{ s['description'] }}">
-        {{ s['platform'] }} — {{ s['name'] }} (৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }}/1K)
-      </option>
-      {% endfor %}
-    </select>
-  </label>
-  <label>Link (profile / post / video URL)<input name="link" placeholder="https://..." required></label>
-  <label>Quantity<input type="number" name="quantity" id="qty" min="1" required></label>
-  <div class="hint" id="range"></div>
-  <div class="hint" id="svcdesc"></div>
-  <div class="charge">Charge: <b id="charge">৳0</b></div>
-  <button class="btn big" type="submit">Place Order</button>
-</form>
+<div class="filterrow">
+  <button type="button" class="pill active" data-filter="all">All</button>
+  {% for p in platforms %}<button type="button" class="pill" data-filter="{{ p }}">{{ p }}</button>{% endfor %}
+</div>
 
-<h3>My Orders</h3>
-<table>
-  <tr><th>#</th><th>Service</th><th>Qty</th><th>Charge</th><th>Status</th><th>Date</th></tr>
-  {% for o in orders %}
-  <tr><td>{{ o['id'] }}</td><td>{{ o['service_name'] }}</td><td>{{ o['quantity'] }}</td>
-      <td>৳{{ '%.2f'|format(o['charge']) }}</td>
-      <td><span class="st {{ o['status'] }}">{{ o['status'] }}</span></td>
-      <td>{{ o['created_at'][:16].replace('T',' ') }}</td></tr>
-  {% else %}<tr><td colspan="6">No orders yet.</td></tr>{% endfor %}
-</table>
+<div class="ordergrid">
+  <form class="orderform" method="post" action="{{ url_for('place_order') }}">
+    <label>Service
+      <select name="service_id" id="svc" required>
+        {% for s in services %}
+        <option value="{{ s['id'] }}" data-platform="{{ s['platform'] }}" data-rate="{{ s['price_per_1k'] }}" data-min="{{ s['min_qty'] }}" data-max="{{ s['max_qty'] }}" data-desc="{{ s['description'] }}" data-name="{{ s['name'] }}">
+          {{ s['platform'] }} — {{ s['name'] }} (৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }}/1K)
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Link (profile / post / video URL)<input name="link" placeholder="https://..." required></label>
+    <label>Quantity<input type="number" name="quantity" id="qty" min="1" required></label>
+    <div class="charge">Charge: <b id="charge">৳0</b></div>
+    <button class="btn big" type="submit">Place Order</button>
+  </form>
+
+  <aside class="descpanel">
+    <h3 id="descname">Service Details</h3>
+    <div class="descrow"><span>Rate / 1000</span><b id="descrate"></b></div>
+    <div class="descrow"><span>Minimum</span><b id="descmin"></b></div>
+    <div class="descrow"><span>Maximum</span><b id="descmax"></b></div>
+    <p id="descdesc" class="carddesc"></p>
+    <div class="charge">Charge: <b id="charge2">৳0</b></div>
+    <p class="hint">Orders wait for admin confirmation, then are processed. Track them on the Orders page.</p>
+  </aside>
+</div>
+<p class="hint" style="margin-top:16px">Need many orders at once? Use <a href="{{ url_for('mass_order') }}">Mass Order</a>.</p>
 <script>
-const svc = document.getElementById('svc'), qty = document.getElementById('qty'), ch = document.getElementById('charge'), rg = document.getElementById('range'), ds = document.getElementById('svcdesc');
+const svc = document.getElementById('svc'), qty = document.getElementById('qty'),
+      ch = document.getElementById('charge'), ch2 = document.getElementById('charge2'),
+      dn = document.getElementById('descname'), dr = document.getElementById('descrate'),
+      dmin = document.getElementById('descmin'), dmax = document.getElementById('descmax'),
+      dd = document.getElementById('descdesc');
 function upd(){
   const opt = svc.selectedOptions[0];
+  if(!opt) return;
   const rate = parseFloat(opt.dataset.rate), q = parseInt(qty.value||0);
   qty.min = opt.dataset.min; qty.max = opt.dataset.max;
-  ch.textContent = '৳' + ((rate*q/1000).toFixed(2));
-  rg.textContent = '৳' + rate + ' per 1000 · Min ' + opt.dataset.min + ' · Max ' + opt.dataset.max;
-  ds.textContent = opt.dataset.desc || '';
+  const charge = '৳' + ((rate*q/1000).toFixed(2));
+  ch.textContent = charge; ch2.textContent = charge;
+  dn.textContent = opt.dataset.name;
+  dr.textContent = '৳' + rate + ' / 1000';
+  dmin.textContent = opt.dataset.min; dmax.textContent = opt.dataset.max;
+  dd.textContent = opt.dataset.desc || '';
 }
+document.querySelectorAll('.filterrow .pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filterrow .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const f = btn.dataset.filter;
+    let first = null;
+    [...svc.options].forEach(o => {
+      const show = (f === 'all' || o.dataset.platform === f);
+      o.hidden = !show;
+      if (show && !first) first = o;
+    });
+    if (first && svc.selectedOptions[0].hidden) svc.value = first.value;
+    upd();
+  });
+});
 svc.onchange = upd; qty.oninput = upd; upd();
 </script>
 {% endblock %}
