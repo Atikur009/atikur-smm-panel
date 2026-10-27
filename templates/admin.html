@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Admin · Atikur SMM Panel{% endblock %}
+{% block content %}
+<h2>Admin Panel</h2>
+<div class="statcards">
+  <div class="stat"><span>Users</span><b>{{ stats['users'] }}</b></div>
+  <div class="stat"><span>Orders</span><b>{{ stats['orders'] }}</b></div>
+  <div class="stat"><span>Pending payments</span><b>{{ stats['pending_pay'] }}</b></div>
+  <div class="stat"><span>Total revenue</span><b>৳{{ '%.2f'|format(stats['revenue']) }}</b></div>
+</div>
+{% if not provider_ok %}<div class="flash error">Provider API not configured — orders will wait for manual handling. Set PROVIDER_API_URL and PROVIDER_API_KEY.</div>{% endif %}
+
+<h3>Pending bKash Payments</h3>
+<table>
+  <tr><th>#</th><th>User</th><th>Amount</th><th>TrxID</th><th>Sender</th><th>Date</th><th>Action</th></tr>
+  {% for p in pending_pay %}
+  <tr><td>{{ p['id'] }}</td><td>{{ p['username'] }}</td><td>৳{{ '%.2f'|format(p['amount']) }}</td>
+      <td>{{ p['trxid'] }}</td><td>{{ p['sender'] }}</td><td>{{ p['created_at'][:16].replace('T',' ') }}</td>
+      <td><a class="btn small ok" href="{{ url_for('payment_action', pid=p['id'], action='approve') }}">Approve</a>
+          <a class="btn small bad" href="{{ url_for('payment_action', pid=p['id'], action='reject') }}">Reject</a></td></tr>
+  {% else %}<tr><td colspan="7">Nothing pending.</td></tr>{% endfor %}
+</table>
+
+<h3>All Orders</h3>
+<table>
+  <tr><th>#</th><th>User</th><th>Service</th><th>Qty</th><th>Charge</th><th>Status</th><th>Provider ID</th><th></th></tr>
+  {% for o in orders %}
+  <tr><td>{{ o['id'] }}</td><td>{{ o['username'] }}</td><td>{{ o['service_name'] }}</td><td>{{ o['quantity'] }}</td>
+      <td>৳{{ '%.2f'|format(o['charge']) }}</td>
+      <td><span class="st {{ o['status'] }}">{{ o['status'] }}</span></td>
+      <td>{{ o['provider_order_id'] or '—' }}</td>
+      <td>{% if o['provider_order_id'] %}<a href="{{ url_for('sync_order', oid=o['id']) }}">Sync</a>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="8">No orders yet.</td></tr>{% endfor %}
+</table>
+{% endblock %}

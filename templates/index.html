@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Boost Your Social Media 🚀</h1>
+  <p>Real followers & subscribers for Facebook, TikTok, Instagram and YouTube — at the lowest prices in BDT.</p>
+  {% if not user %}<a class="btn big" href="{{ url_for('register') }}">Create Free Account</a>{% endif %}
+  <div class="trust"><span><b>৳</b> BDT Prices</span><span><b>bKash</b> Payment</span><span><b>Fast</b> Delivery</span><span><b>24/7</b> Order Tracking</span></div>
+</section>
+<h2>Services & Prices</h2>
+<div class="cards">
+{% for s in services %}
+  <div class="card">
+    <div class="platform">{{ s['platform'] }}</div>
+    <h3>{{ s['name'] }}</h3>
+    <div class="price">৳{{ s['price_per_1k']|int if s['price_per_1k']==s['price_per_1k']|int else s['price_per_1k'] }} <span>/ 1000</span></div>
+    <div class="minmax">Min {{ s['min_qty'] }} · Max {{ s['max_qty'] }}</div>
+    <a class="btn" href="{{ url_for('register') if not user else url_for('dashboard') }}">Order Now</a>
+  </div>
+{% endfor %}
+</div>
+<section class="how">
+  <h2>How it works</h2>
+  <ol>
+    <li><b>Sign up</b> for a free account.</li>
+    <li><b>Add funds</b> via bKash (send money, submit TrxID).</li>
+    <li><b>Place your order</b> — paste the link, choose quantity, done.</li>
+  </ol>
+</section>
+{% endblock %}

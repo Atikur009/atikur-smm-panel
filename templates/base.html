@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Atikur SMM Panel{% endblock %}</title>
+<meta name="description" content="Atikur SMM Panel — Facebook, TikTok, Instagram followers and YouTube subscribers at the lowest prices in BDT. Pay via bKash.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+  <a class="brand" href="{{ url_for('index') }}">⚡ Atikur SMM Panel</a>
+  <div class="nav-links">
+    {% if user %}
+      <span class="bal">৳{{ '%.2f'|format(user['balance']) }}</span>
+      {% if user['is_admin'] %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('funds') }}">Add Funds</a>
+      <a href="{{ url_for('logout') }}">Logout ({{ user['username'] }})</a>
+    {% else %}
+      <a href="{{ url_for('login') }}">Login</a>
+      <a class="btn" href="{{ url_for('register') }}">Sign Up</a>
+    {% endif %}
+  </div>
+</nav>
+<main>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer>© 2026 Atikur SMM Panel · panel.atikur.cyou</footer>
+</body>
+</html>
