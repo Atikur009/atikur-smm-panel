@@ -2,6 +2,7 @@ services:
   - type: web
     name: atikur-smm-panel
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1
     envVars:
@@ -23,6 +24,7 @@ services:
         value: ""
       - key: PROVIDER_API_KEY
         sync: false
+
 
 databases:
   - name: atikur-smm-panel-db
